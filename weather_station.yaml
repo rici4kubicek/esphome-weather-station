@@ -1,0 +1,336 @@
+substitutions:
+  name: weatherstation
+  friendly_name: "Weather Station"
+
+esphome:
+  name: $name
+  friendly_name: $friendly_name
+
+esp32:
+  board: esp-wrover-kit
+  flash_size: 4MB
+  framework:
+    type: arduino
+
+# Enable logging
+logger:
+  level: DEBUG
+
+# Enable Home Assistant API
+api:
+  password: ""
+
+ota:
+  - platform: esphome
+    password: ""
+
+web_server:
+  port: 80
+
+time:
+  - platform: sntp
+    id: sntp_time
+    timezone: Europe/Prague
+    servers:
+     - 0.pool.ntp.org
+     - 1.pool.ntp.org
+     - 2.pool.ntp.org
+
+ethernet:
+  type: LAN8720
+  mdc_pin: GPIO23
+  mdio_pin: GPIO18
+  clk_mode: GPIO17_OUT
+  phy_addr: 0
+  power_pin: GPIO12
+
+  # Optional manual IP
+  manual_ip:
+    static_ip: 192.168.5.120
+    gateway: 192.168.5.1
+    subnet: 255.255.255.0
+  domain: .weatherstation.local
+
+sensor:
+  - platform: pulse_meter
+    pin:
+      # Don't forget to add a pulling resistor, see README
+      number: GPIO34
+      mode: INPUT
+    id: wind_speed
+    unit_of_measurement: 'm/s'
+    name: "${friendly_name} wind speed"
+    icon: 'mdi:weather-windy'
+    internal_filter: 13us
+    timeout: 5s
+    filters:
+      - multiply: 0.005560619
+      - sliding_window_moving_average:
+          window_size: 20
+          send_every: 20
+
+  - platform: copy
+    name: '${friendly_name} wind speed average'
+    icon: 'mdi:weather-windy'
+    id: wind_speed_avg
+    source_id: wind_speed
+    unit_of_measurement: 'm/s'
+    filters:
+      - throttle_average: 5s
+
+  - platform: copy
+    name: '${friendly_name} wind speed (km/h)'
+    id: wind_speed_kmh
+    source_id: wind_speed
+    unit_of_measurement: 'km/h'
+    icon: 'mdi:weather-windy'
+    filters:
+      - multiply: 3.6
+
+  - platform: copy
+    name: '${friendly_name} wind speed average (km/h)'
+    icon: 'mdi:weather-windy'
+    id: wind_speed_kmh_avg
+    source_id: wind_speed_avg
+    unit_of_measurement: 'km/h'
+    filters:
+      - multiply: 3.6
+    on_value:
+      lambda: |-
+        if (x < 1) {
+          id(wind_scale_code).publish_state("0");
+          id(wind_scale).publish_state("Calm");
+        } else if (x >= 1 && x < 6) {
+          id(wind_scale_code).publish_state("1");
+          id(wind_scale).publish_state("Light Air");
+        } else if (x >= 6 && x < 12) {
+          id(wind_scale_code).publish_state("2");
+          id(wind_scale).publish_state("Light Breeze");
+        } else if (x >= 12 && x < 20) {
+          id(wind_scale_code).publish_state("3");
+          id(wind_scale).publish_state("Gentle Breeze");
+        } else if (x >= 20 && x < 29) {
+          id(wind_scale_code).publish_state("4");
+          id(wind_scale).publish_state("Moderate Breeze");
+        } else if (x >= 29 && x < 39) {
+          id(wind_scale_code).publish_state("5");
+          id(wind_scale).publish_state("Fresh Breeze");
+        } else if (x >= 39 && x < 50) {
+          id(wind_scale_code).publish_state("6");
+          id(wind_scale).publish_state("Strong Breeze");
+        } else if (x >= 50 && x < 62) {
+          id(wind_scale_code).publish_state("7");
+          id(wind_scale).publish_state("Near Gale");
+        } else if (x >= 62 && x < 75) {
+          id(wind_scale_code).publish_state("8");
+          id(wind_scale).publish_state("Gale");
+        } else if (x >= 75 && x < 89) {
+          id(wind_scale_code).publish_state("9");
+          id(wind_scale).publish_state("Severe Gale");
+        } else if (x >= 89 && x < 103) {
+          id(wind_scale_code).publish_state("10");
+          id(wind_scale).publish_state("Storm");
+        } else if (x >= 103 && x < 118) {
+          id(wind_scale_code).publish_state("11");
+          id(wind_scale).publish_state("Violent Storm");
+        } else if (x >= 118) {
+          id(wind_scale_code).publish_state("12");
+          id(wind_scale).publish_state("Hurricane Force");
+        } else {
+          ESP_LOGD("main", "It shouldn't happen (wind_speed_kmh_avg: %f)", x);
+        }
+
+  - platform: pulse_counter
+    pin:
+      # Don't forget to add a pulling resistor, see README
+      number: GPIO38
+      mode: INPUT
+    unit_of_measurement: 'mm'
+    name: "${friendly_name} rain gauge"
+    icon: 'mdi:weather-rainy'
+    id: rain_gauge
+    internal: true
+    count_mode:
+      rising_edge: DISABLE
+      falling_edge: INCREMENT
+    internal_filter: 13us
+    update_interval: 60s
+    filters:
+      # Each 0.011" (0.2794mm) of rain causes one momentary contact closure
+      - multiply: 0.2794
+    accuracy_decimals: 4
+
+  - platform: integration
+    name: "${friendly_name} rainfall per min"
+    id: rain_per_min
+    time_unit: min
+    unit_of_measurement: 'mm'
+    icon: 'mdi:weather-rainy'
+    sensor: rain_gauge
+
+  - platform: total_daily_energy
+    name: "${friendly_name} total daily rain"
+    power_id: rain_gauge
+    unit_of_measurement: 'mm'
+    icon: 'mdi:weather-rainy'
+    # x60 To convert to aggregated rain amount
+    filters:
+      - multiply: 60
+
+  - platform: adc
+    id: source_sensor
+    pin: GPIO37
+    name: ADC
+    attenuation: 11db
+    internal: true
+    update_interval: 5s
+    accuracy_decimals: 1
+    filters:
+      - multiply: 0.846153 # 3.9 -> 3.3V
+
+  - platform: resistance
+    sensor: source_sensor
+    id: resistance_sensor
+    configuration: DOWNSTREAM
+    resistor: 10kOhm
+    internal: true
+    name: Resistance Sensor
+    reference_voltage: 3.9V
+    accuracy_decimals: 1
+    filters:
+      - median:
+          window_size: 7
+          send_every: 4
+          send_first_at: 3
+      #- heartbeat: 30s
+    on_value:
+      - if:
+          condition:
+            sensor.in_range:
+              id: resistance_sensor
+              above: 15000
+              below: 15500
+          then:
+            - text_sensor.template.publish:
+                id: wind_dir_card
+                state: "N"
+            - sensor.template.publish:
+                id: wind_heading
+                state: 0.0
+      - if:
+          condition:
+            sensor.in_range:
+              id: resistance_sensor
+              above: 5000
+              below: 5500
+          then:
+            - text_sensor.template.publish:
+                id: wind_dir_card
+                state: "NE"
+            - sensor.template.publish:
+                id: wind_heading
+                state: 45.0
+      - if:
+          condition:
+            sensor.in_range:
+              id: resistance_sensor
+              above: 350
+              below: 450
+          then:
+            - text_sensor.template.publish:
+                id: wind_dir_card
+                state: "E"
+            - sensor.template.publish:
+                id: wind_heading
+                state: 90.0
+      - if:
+          condition:
+            sensor.in_range:
+              id: resistance_sensor
+              above: 1200
+              below: 1400
+          then:
+            - text_sensor.template.publish:
+                id: wind_dir_card
+                state: "SE"
+            - sensor.template.publish:
+                id: wind_heading
+                state: 135.0
+      - if:
+          condition:
+            sensor.in_range:
+              id: resistance_sensor
+              above: 2400
+              below: 2500
+          then:
+            - text_sensor.template.publish:
+                id: wind_dir_card
+                state: "S"
+            - sensor.template.publish:
+                id: wind_heading
+                state: 180.0
+      - if:
+          condition:
+            sensor.in_range:
+              id: resistance_sensor
+              above: 8900
+              below: 9200
+          then:
+            - text_sensor.template.publish:
+                id: wind_dir_card
+                state: "SW"
+            - sensor.template.publish:
+                id: wind_heading
+                state: 225.0
+      - if:
+          condition:
+            sensor.in_range:
+              id: resistance_sensor
+              above: 37500
+              below: 38500
+          then:
+            - text_sensor.template.publish:
+                id: wind_dir_card
+                state: "W"
+            - sensor.template.publish:
+                id: wind_heading
+                state: 270.0
+      - if:
+          condition:
+            sensor.in_range:
+              id: resistance_sensor
+              above: 24400
+              below: 25000
+          then:
+            - text_sensor.template.publish:
+                id: wind_dir_card
+                state: "NW"
+            - sensor.template.publish:
+                id: wind_heading
+                state: 315.0
+
+  - platform: template
+    name: "${friendly_name} wind heading"
+    id: wind_heading
+    unit_of_measurement: "°"
+
+text_sensor:
+  - platform: template
+    name: "${friendly_name} wind cardinal direction"
+    id: wind_dir_card
+
+  - platform: template
+    name: '${friendly_name} Beaufort wind scale'
+    icon: 'mdi:tailwind'
+    id: wind_scale
+    update_interval: never
+
+  - platform: template
+    name: '${friendly_name} Beaufort wind scale code'
+    icon: 'mdi:tailwind'
+    id: wind_scale_code
+
+interval:
+  - interval: 60s
+    then:
+      - sensor.integration.reset: rain_per_min
