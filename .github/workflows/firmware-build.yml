@@ -1,0 +1,98 @@
+name: Build and Publish ESPHome firmware
+
+on:
+  # Runs on pushes targeting the default branch
+  push:
+
+  # Allows you to run this workflow manually from the Actions tab
+  workflow_dispatch:
+
+# Allow only one concurrent deployment, skipping runs queued between the run in-progress and latest queued.
+# However, do NOT cancel in-progress runs as we want to allow these production deployments to complete.
+concurrency:
+  group: "firmware-build-${{ github.ref }}"
+  cancel-in-progress: false
+
+jobs:
+  list-configs:
+    runs-on: ubuntu-latest
+    outputs:
+      names: ${{ steps.set-matrix.outputs.names }}
+    steps:
+      - uses: actions/checkout@v4.1.1
+      - id: set-matrix
+        run: |
+          echo "names=$(ls *.yaml | xargs -I{} basename {} | sed 's/\.[^.]*$//' | jq -R -s -c 'split("\n")[:-1]')" >> $GITHUB_OUTPUT
+
+  build:
+    name: Build ESPHome binary for ${{ matrix.config_file }}
+    needs: [list-configs]
+    strategy:
+        matrix:
+            config_file: ${{ fromJson(needs.list-configs.outputs.names) }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: checkout
+        uses: actions/checkout@v4.1.1
+
+      - name: esphome build
+        id: esphome-build
+        uses: esphome/build-action@v3.0.0
+        with:
+          yaml_file:  ${{ matrix.config_file }}.yaml
+          version: "2024.6.1"
+
+      - run: |
+          mkdir output
+          find "${{ steps.esphome-build.outputs.name }}" -type f -name "*.bin" -exec rsync --relative {} "output/${{ matrix.config_file }}" \;
+          mv "${{ steps.esphome-build.outputs.name }}/manifest.json" output/${{ matrix.config_file }}/manifest.json
+
+      - uses: actions/upload-artifact@v4.0.0
+        with:
+          name: ${{ matrix.config_file }}
+          path: output
+
+  publish:
+    name: Publish new firmware to GitHub Pages
+    if: ${{ github.ref == 'refs/heads/main' }}
+    runs-on: ubuntu-latest
+    needs: [build]
+    # Grant GITHUB_TOKEN the permissions required to make a Pages deployment
+    permissions:
+      pages: write      # to deploy to Pages
+      id-token: write   # to verify the deployment originates from an appropriate source
+      actions: read     # to download an artifact uploaded by `actions/upload-pages-artifact@v3`
+
+    # Deploy to the github-pages environment
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+      
+    steps:
+      - uses: actions/checkout@v4.1.1
+      - uses: actions/download-artifact@v4.1.0
+        with:
+          path: output
+          merge-multiple: true
+
+      - name: Create manifest files
+        run: |
+          mkdir gh-pages
+          pagesDir=$(readlink -f gh-pages)
+          for subdirectory in output/*/; do
+              name=$(basename "$subdirectory")
+              echo $name
+              version=$(grep -E '^\s+project_version:' "$name.yaml" | awk '{print $2}' | tr -d '"')
+              pushd "output/$name"
+              jq -s "{\"name\": \"$name\", \"version\": \"2024.6.1\", \"home_assistant_domain\": \"esphome\", \"new_install_prompt_erase\": true, \"builds\":.}" manifest.json > $pagesDir/$name.json
+              find . -type f -name "*.bin" -exec rsync --relative {} "$pagesDir" \;
+              popd
+          done
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3.0.0
+        with:
+          path: gh-pages
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4.0.0
