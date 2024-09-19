@@ -172,15 +172,6 @@ sensor:
     icon: 'mdi:weather-rainy'
     sensor: rain_gauge
 
-  - platform: total_daily_energy
-    name: "${friendly_name} total daily rain"
-    power_id: rain_gauge
-    unit_of_measurement: 'mm'
-    icon: 'mdi:weather-rainy'
-    # x60 To convert to aggregated rain amount
-    filters:
-      - multiply: 60
-
   - platform: adc
     id: source_sensor
     pin: GPIO35
