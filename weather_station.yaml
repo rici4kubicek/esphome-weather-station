@@ -185,12 +185,18 @@ sensor:
     id: source_sensor
     pin: GPIO35
     name: ADC
-    attenuation: 11db
+    attenuation: 12db
     internal: true
-    update_interval: 5s
-    accuracy_decimals: 1
+    update_interval: 4s
+    accuracy_decimals: 2
+    #filters:
+    #  - multiply: 1.16037735849
     filters:
-      - multiply: 0.846153 # 3.9 -> 3.3V
+      - offset: -0.042
+      - median:
+          window_size: 3
+          send_every: 2
+          send_first_at: 1
 
   - platform: resistance
     sensor: source_sensor
@@ -199,21 +205,15 @@ sensor:
     resistor: 10kOhm
     internal: true
     name: Resistance Sensor
-    reference_voltage: 3.9V
-    accuracy_decimals: 1
-    filters:
-      - median:
-          window_size: 7
-          send_every: 4
-          send_first_at: 3
-      #- heartbeat: 30s
+    reference_voltage: 3.3V
+    accuracy_decimals: 0
     on_value:
       - if:
           condition:
             sensor.in_range:
               id: resistance_sensor
-              above: 15000
-              below: 15500
+              above: 28000
+              below: 32000
           then:
             - text_sensor.template.publish:
                 id: wind_dir_card
@@ -225,8 +225,21 @@ sensor:
           condition:
             sensor.in_range:
               id: resistance_sensor
-              above: 5000
-              below: 5500
+              above: 5800
+              below: 6300
+          then:
+            - text_sensor.template.publish:
+                id: wind_dir_card
+                state: "NNE"
+            - sensor.template.publish:
+                id: wind_heading
+                state: 22.5
+      - if:
+          condition:
+            sensor.in_range:
+              id: resistance_sensor
+              above: 7300
+              below: 7600
           then:
             - text_sensor.template.publish:
                 id: wind_dir_card
@@ -238,8 +251,22 @@ sensor:
           condition:
             sensor.in_range:
               id: resistance_sensor
-              above: 350
-              below: 450
+              above: 7650
+              below: 7900
+          then:
+            - text_sensor.template.publish:
+                id: wind_dir_card
+                state: "ENE"
+            - sensor.template.publish:
+                id: wind_heading
+                state: 67.5
+     
+      - if:
+          condition:
+            sensor.in_range:
+              id: resistance_sensor
+              above: 600
+              below: 1200
           then:
             - text_sensor.template.publish:
                 id: wind_dir_card
@@ -247,25 +274,13 @@ sensor:
             - sensor.template.publish:
                 id: wind_heading
                 state: 90.0
+  
       - if:
           condition:
             sensor.in_range:
               id: resistance_sensor
-              above: 1200
-              below: 1400
-          then:
-            - text_sensor.template.publish:
-                id: wind_dir_card
-                state: "SE"
-            - sensor.template.publish:
-                id: wind_heading
-                state: 135.0
-      - if:
-          condition:
-            sensor.in_range:
-              id: resistance_sensor
-              above: 2400
-              below: 2500
+              above: 3200
+              below: 4300
           then:
             - text_sensor.template.publish:
                 id: wind_dir_card
@@ -273,25 +288,13 @@ sensor:
             - sensor.template.publish:
                 id: wind_heading
                 state: 180.0
+ 
       - if:
           condition:
             sensor.in_range:
               id: resistance_sensor
-              above: 8900
-              below: 9200
-          then:
-            - text_sensor.template.publish:
-                id: wind_dir_card
-                state: "SW"
-            - sensor.template.publish:
-                id: wind_heading
-                state: 225.0
-      - if:
-          condition:
-            sensor.in_range:
-              id: resistance_sensor
-              above: 37500
-              below: 38500
+              above: 92000
+              below: 103000
           then:
             - text_sensor.template.publish:
                 id: wind_dir_card
@@ -299,36 +302,24 @@ sensor:
             - sensor.template.publish:
                 id: wind_heading
                 state: 270.0
-      - if:
-          condition:
-            sensor.in_range:
-              id: resistance_sensor
-              above: 24400
-              below: 25000
-          then:
-            - text_sensor.template.publish:
-                id: wind_dir_card
-                state: "NW"
-            - sensor.template.publish:
-                id: wind_heading
-                state: 315.0
+ 
 
   - platform: template
     name: "${friendly_name} wind heading"
     id: wind_heading
     unit_of_measurement: "°"
   
-  - platform: dallas_temp
-    name: temperature
-    update_interval: 120s
+  #- platform: dallas_temp
+  #  name: temperature
+  #  update_interval: 120s
 
-  - platform: dht
-    pin: GPIO15
-    temperature:
-      name: "${friendly_name} Temperature"
-    humidity:
-      name: "${friendly_name} Humidity"
-    update_interval: 60s
+  #- platform: dht
+  #  pin: GPIO15
+  #  temperature:
+  #    name: "${friendly_name} Temperature"
+  #  humidity:
+  #    name: "${friendly_name} Humidity"
+  #  update_interval: 60s
 
 text_sensor:
   - platform: template
