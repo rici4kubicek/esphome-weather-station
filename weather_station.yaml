@@ -161,8 +161,8 @@ sensor:
           condition:
             sensor.in_range:
               id: resistance_sensor
-              above: 88000 
-              below: 115000 
+              above: 110000 
+              below: 130000 
           then:
             - text_sensor.template.publish:
                 id: wind_dir_card
