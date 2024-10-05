@@ -38,13 +38,13 @@ pip install esphome
 ```
 
 ### Configure the ESP32-POE
-Update the esphome.yaml file with your specific network settings and any additional sensor configurations as needed.
+Update the `weather_station.yaml` file with your specific network settings and any additional sensor configurations as needed.
 
 ### Upload the firmware to the ESP32-POE
 Connect your ESP32-POE via USB and run:
 
 ```bash
-esphome run esphome.yaml
+esphome run weather_station.yaml
 ```
 
 ### Integrate with Home Assistant (optional)
