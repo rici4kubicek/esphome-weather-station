@@ -1,4 +1,3 @@
-# esphome-weather-station
 # ESPHome Weather station
 This project contains the source code for a weather station built with ESPHome using an ESP32-POE board and several sensors for monitoring wind speed, wind direction, and rainfall. The weather station collects real-time data and can be integrated into platforms like Home Assistant for further automation and monitoring.
 
