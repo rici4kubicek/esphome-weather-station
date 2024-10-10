@@ -148,6 +148,19 @@ sensor:
           condition:
             sensor.in_range:
               id: resistance_sensor
+              above: 6000 
+              below: 7000 
+          then:
+            - text_sensor.template.publish:
+                id: wind_dir_card
+                state: "NNE"
+            - sensor.template.publish:
+                id: wind_heading
+                state: 22.5
+      - if:
+          condition:
+            sensor.in_range:
+              id: resistance_sensor
               above: 7500 
               below: 8400 
           then:
@@ -157,6 +170,19 @@ sensor:
             - sensor.template.publish:
                 id: wind_heading
                 state: 45.0
+      - if:
+          condition:
+            sensor.in_range:
+              id: resistance_sensor
+              above: 750 
+              below: 950 
+          then:
+            - text_sensor.template.publish:
+                id: wind_dir_card
+                state: "ENE"
+            - sensor.template.publish:
+                id: wind_heading
+                state: 67.5
       - if:
           condition:
             sensor.in_range:
@@ -174,6 +200,19 @@ sensor:
           condition:
             sensor.in_range:
               id: resistance_sensor
+              above: 550 
+              below: 750
+          then:
+            - text_sensor.template.publish:
+                id: wind_dir_card
+                state: "ESE"
+            - sensor.template.publish:
+                id: wind_heading
+                state: 112.5
+      - if:
+          condition:
+            sensor.in_range:
+              id: resistance_sensor
               above: 1800 
               below: 2500 
           then:
@@ -183,6 +222,19 @@ sensor:
             - sensor.template.publish:
                 id: wind_heading
                 state: 135.0
+      - if:
+          condition:
+            sensor.in_range:
+              id: resistance_sensor
+              above: 1300 
+              below: 1500 
+          then:
+            - text_sensor.template.publish:
+                id: wind_dir_card
+                state: "SSE"
+            - sensor.template.publish:
+                id: wind_heading
+                state: 157.5
       - if:
           condition:
             sensor.in_range:
@@ -200,7 +252,20 @@ sensor:
           condition:
             sensor.in_range:
               id: resistance_sensor
-              above: 14500 
+              above: 2900 
+              below: 3400 
+          then:
+            - text_sensor.template.publish:
+                id: wind_dir_card
+                state: "SSW"
+            - sensor.template.publish:
+                id: wind_heading
+                state: 202.5
+      - if:
+          condition:
+            sensor.in_range:
+              id: resistance_sensor
+              above: 15000 
               below: 16600 
           then:
             - text_sensor.template.publish:
@@ -209,6 +274,19 @@ sensor:
             - sensor.template.publish:
                 id: wind_heading
                 state: 225.0
+      - if:
+          condition:
+            sensor.in_range:
+              id: resistance_sensor
+              above: 13900 
+              below: 14900 
+          then:
+            - text_sensor.template.publish:
+                id: wind_dir_card
+                state: "WSW"
+            - sensor.template.publish:
+                id: wind_heading
+                state: 247.5
       - if:
           condition:
             sensor.in_range:
@@ -226,6 +304,19 @@ sensor:
           condition:
             sensor.in_range:
               id: resistance_sensor
+              above: 41000 
+              below: 43000 
+          then:
+            - text_sensor.template.publish:
+                id: wind_dir_card
+                state: "WNW"
+            - sensor.template.publish:
+                id: wind_heading
+                state: 292.5
+      - if:
+          condition:
+            sensor.in_range:
+              id: resistance_sensor
               above: 55000 
               below: 63000 
           then:
@@ -235,6 +326,19 @@ sensor:
             - sensor.template.publish:
                 id: wind_heading
                 state: 315.0
+      - if:
+          condition:
+            sensor.in_range:
+              id: resistance_sensor
+              above: 20000 
+              below: 23000 
+          then:
+            - text_sensor.template.publish:
+                id: wind_dir_card
+                state: "NNW"
+            - sensor.template.publish:
+                id: wind_heading
+                state: 337.5
  
 
   - platform: template
